@@ -1,4 +1,5 @@
 mod neuronal_network;
+mod matrix;
 
 // sepal length, width, petal length, width
 // Iris virginica = 1 0 0

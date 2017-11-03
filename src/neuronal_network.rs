@@ -10,8 +10,7 @@ so training is quite fast."
 
 extern crate rand;
 use self::rand::Rng;
-
-type Precision = f64;
+use matrix::*;
 
 #[allow(unused_mut)]
 #[allow(dead_code)]
@@ -26,13 +25,13 @@ pub struct NeuronalNetwork {
 
 	inputs: Box<[Precision]>,
 
-	ih_weights: Box<[Precision]>, // input-hidden
-	ih_weights_stride: usize,
+	ih_weights: Matrix, // input-hidden
+	//ih_weights_stride: usize,
 	h_biases: Box<[Precision]>,
 	h_outputs: Box<[Precision]>,
 
-	ho_weights: Box<[Precision]>, // hidden-output
-	ho_weights_stride: usize,
+	ho_weights: Matrix, // hidden-output
+	//ho_weights_stride: usize,
 	o_biases: Box<[Precision]>,
 	outputs: Box<[Precision]>,
 
@@ -41,11 +40,11 @@ pub struct NeuronalNetwork {
 	h_grads: Box<[Precision]>, // hidden gradients for back-propagation
 
 	// back-prop momentum specific arrays (could be local to method Train)
-	ih_prev_weights_delta: Box<[Precision]>,  // for momentum with back-propagation
-	ih_prev_weights_delta_stride: usize,
+	ih_prev_weights_delta: Matrix,  // for momentum with back-propagation
+	//ih_prev_weights_delta_stride: usize,
 	h_prev_biases_delta: Box<[Precision]>,
-	ho_prev_weights_delta: Box<[Precision]>,
-	ho_prev_weights_delta_stride: usize,
+	ho_prev_weights_delta: Matrix,
+	//ho_prev_weights_delta_stride: usize,
 	o_prev_biases_delta: Box<[Precision]>,
 }
 
@@ -56,23 +55,21 @@ impl NeuronalNetwork {
 
 	pub fn new(num_input: usize, num_hidden: usize, num_output: usize) -> Self {
 		Self {
+			num_weights: (num_input * num_hidden) + (num_hidden * num_output) + num_hidden + num_output,
+			
 			rng: Box::new(rand::weak_rng()),
 
 			num_input: num_input,
 			num_hidden: num_hidden,
 			num_output: num_output,
 
-			num_weights: (num_input * num_hidden) + (num_hidden * num_output) + num_hidden + num_output,
-
 			inputs: Self::boxed_slice(0.0, num_input),
 
-			ih_weights: Self::boxed_slice(0.0, num_input * num_hidden),
-			ih_weights_stride: num_input,
+			ih_weights: Matrix::new(num_hidden, num_input),
 			h_biases: Self::boxed_slice(0.0, num_hidden),
 			h_outputs: Self::boxed_slice(0.0, num_hidden),
 
-			ho_weights: Self::boxed_slice(0.0, num_hidden * num_output),
-			ho_weights_stride: num_hidden,
+			ho_weights: Matrix::new(num_output, num_hidden),
 			o_biases: Self::boxed_slice(0.0, num_output),
 
 			outputs: Self::boxed_slice(0.0, num_output),
@@ -81,11 +78,9 @@ impl NeuronalNetwork {
 			h_grads: Self::boxed_slice(0.0, num_hidden),
 			o_grads: Self::boxed_slice(0.0, num_output),
 
-			ih_prev_weights_delta: Self::boxed_slice(0.0, num_input * num_hidden),
-			ih_prev_weights_delta_stride: num_input,
+			ih_prev_weights_delta: Matrix::new(num_hidden, num_input),
 			h_prev_biases_delta: Self::boxed_slice(0.0, num_hidden),
-			ho_prev_weights_delta: Self::boxed_slice(0.0, num_hidden * num_output),
-			ho_prev_weights_delta_stride: num_hidden,
+			ho_prev_weights_delta: Matrix::new(num_output, num_hidden),
 			o_prev_biases_delta: Self::boxed_slice(0.0, num_output),
 		}
 	}
@@ -97,10 +92,10 @@ impl NeuronalNetwork {
 		}
 
 		let mut k = 0;	// points into weights param
-
-		for i in 0..self.num_input {
-			for j in 0..self.num_hidden {
-				self.ih_weights[i * self.ih_weights_stride + j] = weights[k];
+		
+		for i in 0..self.ih_weights.get_rows() {
+			for j in 0..self.ih_weights.get_columns() {
+				self.ih_weights[i][j] = weights[k];
 				k += 1;
 			}
 		}
@@ -110,9 +105,9 @@ impl NeuronalNetwork {
 			k += 1;
 		}
 
-		for i in 0..self.num_hidden {
-			for j in 0..self.num_output {
-				self.ho_weights[i * self.ho_weights_stride + j] = weights[k];
+		for i in 0..self.ho_weights.get_rows() {
+			for j in 0..self.ho_weights.get_columns() {
+				self.ho_weights[i][j] = weights[k];
 				k += 1;
 			}
 		}
@@ -141,9 +136,11 @@ impl NeuronalNetwork {
 		let mut result = Self::boxed_slice(0.0, self.num_weights);
 		let mut k = 0;
 
-		for i in 0..self.ih_weights.len() {
-			result[k] = self.ih_weights[i];
-			k += 1;
+		for i in 0..self.ih_weights.get_rows() {
+			for j in 0..self.ih_weights.get_columns() {
+				result[k] = self.ih_weights[i][j];
+				k += 1;
+			}
 		}
 
 		for i in 0..self.h_biases.len() {
@@ -151,9 +148,11 @@ impl NeuronalNetwork {
 			k += 1;
 		}
 
-		for i in 0..self.ho_weights.len() {
-			result[k] = self.ho_weights[i];
-			k += 1;
+		for i in 0..self.ho_weights.get_rows() {
+			for j in 0..self.ho_weights.get_columns() {
+				result[k] = self.ho_weights[i][j];
+				k += 1;
+			}
 		}
 
 		for i in 0..self.o_biases.len() {
@@ -176,9 +175,9 @@ impl NeuronalNetwork {
 			self.inputs[i] = x_values[i];
 		}
 
-		for j in 0..self.num_hidden {			// compute i-h sum of weights * inputs
-			for i in 0..self.num_input {
-				h_sums[j] += self.inputs[i] * self.ih_weights[i * self.ih_weights_stride + j];	// note +=
+		for j in 0..self.ih_weights.get_columns() {			// compute i-h sum of weights * inputs
+			for i in 0..self.ih_weights.get_rows() {
+				h_sums[j] += self.inputs[i] * self.ih_weights[i][j];	// note +=
 			}
 		}
 
@@ -192,7 +191,13 @@ impl NeuronalNetwork {
 
 		for j in 0..self.num_output {
 			for i in 0..self.num_hidden {	// compute h-o sum of weights * h_outputs
-				o_sums[j] += self.h_outputs[i] * self.ho_weights[i * self.ho_weights_stride + j];	// note +=
+				
+			}
+		}
+
+		for j in 0..self.ho_weights.get_columns() {
+			for i in 0..self.ho_weights.get_rows() {	// compute h-o sum of weights * h_outputs
+				o_sums[j] += self.h_outputs[i] * self.ho_weights[i][j];	// note +=
 			}
 		}
 
@@ -262,12 +267,12 @@ impl NeuronalNetwork {
 		}
 
 		// 2. compute hidden gradients
-		for i in 0..self.h_grads.len() {
+		for i in 0..self.ho_weights.get_rows() {
 			// derivative of tanh = (1 - y) * (1 + y)
 			let derivative = (1.0 - self.h_outputs[i]) * (1.0 + self.h_outputs[i]);
 			let mut sum = 0.0;
-			for j in 0..self.num_output { // each hidden delta is the sum of num_output terms
-				let x = self.o_grads[j] * self.ho_weights[i * self.ho_weights_stride + j];
+			for j in 0..self.ho_weights.get_columns() {
+				let x = self.o_grads[j] * self.ho_weights[i][j];
 				sum += x;
 			}
 			self.h_grads[i] = derivative * sum;
@@ -275,15 +280,14 @@ impl NeuronalNetwork {
 
 		// 3a. update hidden weights (gradients must be computed right-to-left but weights
 		// can be updated in any order)
-		for i in 0..self.ih_weights.len() {
-			for j in 0..self.ih_weights_stride {
-				let k = i * self.ih_weights_stride + j;
+		for i in 0..self.ih_weights.get_rows() {
+			for j in 0..self.ih_weights.get_columns() {
 				let delta = learn_rate * self.h_grads[j] * self.inputs[i]; // compute the new delta
-				self.ih_weights[k] += delta; // update. note we use '+' instead of '-'. this can be very tricky.
+				self.ih_weights[i][j] += delta; // update. note we use '+' instead of '-'. this can be very tricky.
 				// now add momentum using previous delta. on first pass old value will be 0.0 but that's OK.
-				self.ih_weights[k] += momentum * self.ih_prev_weights_delta[k];
-				self.ih_weights[k] -= weight_decay * self.ih_weights[k]; // weight decay
-				self.ih_prev_weights_delta[k] = delta; // don't forget to save the delta for momentum
+				self.ih_weights[i][j] += momentum * self.ih_prev_weights_delta[i][j];
+				self.ih_weights[i][j] -= weight_decay * self.ih_weights[i][j]; // weight decay
+				self.ih_prev_weights_delta[i][j] = delta; // don't forget to save the delta for momentum
 			}
 		}
 
@@ -297,17 +301,17 @@ impl NeuronalNetwork {
 		}
 
 		// 4. update hidden-output weights
-		for i in 0..self.ho_weights.len() {
-			for j in 0..self.ho_weights_stride {
-				let k = i * self.ho_weights_stride + j;
+		for i in 0..self.ho_weights.get_rows() {
+			for j in 0..self.ho_weights.get_columns() {
 				// see above: h_outputs are inputs to the nn outputs
 				let delta = learn_rate * self.o_grads[j] * self.h_outputs[i];
-				self.ho_weights[k] += delta;
-				self.ho_weights[k] += momentum * self.ho_prev_weights_delta[k]; // momentum
-				self.ho_weights[k] -= weight_decay * self.ho_weights[k]; // weight decay
-				self.ho_prev_weights_delta[k] = delta; // save
+				self.ho_weights[i][j] += delta;
+				self.ho_weights[i][j] += momentum * self.ho_prev_weights_delta[i][j]; // momentum
+				self.ho_weights[i][j] -= weight_decay * self.ho_weights[i][j]; // weight decay
+				self.ho_prev_weights_delta[i][j] = delta; // save
 			}
 		}
+
 
 		// 4b. update output biases
 		for i in 0..self.o_biases.len() {
