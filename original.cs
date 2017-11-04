@@ -730,8 +730,7 @@ namespace BuildNeuralNetworkDemo
 
 		// ----------------------------------------------------------------------------------------
 
-		public void Train(double[][] trainData, int maxEprochs, double learnRate, double momentum,
-			double weightDecay)
+		public void Train(double[][] trainData, int maxEprochs, double learnRate, double momentum, double weightDecay)
 		{
 			// train a back-prop style NN classifier using learning rate and momentum
 			// weight decay reduces the magnitude of a weight value over time unless that value

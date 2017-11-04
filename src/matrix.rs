@@ -1,4 +1,4 @@
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 
 pub type Precision = f64;
 
@@ -30,6 +30,12 @@ impl Index<usize> for Matrix {
 	type Output = [Precision];
 
 	fn index(&self, i: usize) -> &[Precision] {
-		self.data[i * self.columns .. i * self.columns + self.columns]
+		&self.data[i * self.columns .. i * self.columns + self.columns]
+	}
+}
+
+impl IndexMut<usize> for Matrix {
+	fn index_mut(&mut self, i: usize) -> &mut [Precision] {
+		&mut self.data[i * self.columns .. i * self.columns + self.columns]
 	}
 }

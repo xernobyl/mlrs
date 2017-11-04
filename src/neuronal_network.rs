@@ -11,6 +11,7 @@ so training is quite fast."
 extern crate rand;
 use self::rand::Rng;
 use matrix::*;
+use std::iter::FromIterator;
 
 #[allow(unused_mut)]
 #[allow(dead_code)]
@@ -189,12 +190,6 @@ impl NeuronalNetwork {
 			self.h_outputs[i] = Self::tanh(h_sums[i])	// hard-coded
 		}
 
-		for j in 0..self.num_output {
-			for i in 0..self.num_hidden {	// compute h-o sum of weights * h_outputs
-				
-			}
-		}
-
 		for j in 0..self.ho_weights.get_columns() {
 			for i in 0..self.ho_weights.get_rows() {	// compute h-o sum of weights * h_outputs
 				o_sums[j] += self.h_outputs[i] * self.ho_weights[i][j];	// note +=
@@ -324,6 +319,7 @@ impl NeuronalNetwork {
 	} // update_weights
 
 	pub fn train(&mut self, train_data: &[Precision], max_epochs: usize, learn_rate: Precision, momentum: Precision, weight_decay: Precision, min_mse: Precision) {
+		let train_data_stride = self.num_input + self.num_output;
 		// train a back-prop style NN classifier using learning rate and momentum
 		// weight decay reduces the magnitude of a weight value over time unless that value
 		// is constantly increased
@@ -331,7 +327,7 @@ impl NeuronalNetwork {
 		let mut x_values = Self::boxed_slice(0.0, self.num_input); // input
 		let mut t_values = Self::boxed_slice(0.0, self.num_output); // target values
 
-		let mut sequence = [0, train_data.len()];
+		let mut sequence = Vec::from_iter(0..train_data.len() / train_data_stride);
 		for i in 0..sequence.len() {
 			sequence[i] = i;
 		}
@@ -342,12 +338,12 @@ impl NeuronalNetwork {
 			}
 
 			self.rng.shuffle(&mut sequence);	// visit each training data in random order
-
-			for i in 0..train_data.len() {
+			
+			for i in 0..train_data.len() / train_data_stride {
 				let idx = sequence[i];
 
-				x_values.copy_from_slice(&train_data [(idx * self.num_input)..(idx * self.num_input + self.num_input)]);
-				t_values.copy_from_slice(&train_data [(idx * self.num_input + self.num_input)..(idx * self.num_input + self.num_output)]);
+				x_values.copy_from_slice(&train_data [(idx * train_data_stride)..(idx * train_data_stride + self.num_input)]);
+				t_values.copy_from_slice(&train_data [(idx * train_data_stride + self.num_input)..(idx * train_data_stride + self.num_input + self.num_output)]);
 				self.compute_outputs(&x_values); // copy x_values in, compute outputs (store them internally)
 				self.update_weights(&t_values, learn_rate, momentum, weight_decay); // find better weights
 			} // each training tuple
