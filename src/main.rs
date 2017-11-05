@@ -170,7 +170,10 @@ fn main() {
 	let num_output: usize = 3;
 
 	let mut nn = neuronal_network::NeuronalNetwork::new(num_input, num_hidden, num_output);
-	nn.train(&TEST_DATA, max_epochs, learn_rate, momentum, weight_decay, min_mse);
+	nn.initialize_weights();
+	nn.train(&TEST_DATA[0 .. 100 * 7], max_epochs, learn_rate, momentum, weight_decay, min_mse);
 
-	println!("Did it work?");
+	let accuracy = nn.accuracy(&TEST_DATA[100 * 7 .. 150 * 7]);
+
+	println!("Accuracy is {}", accuracy);
 }

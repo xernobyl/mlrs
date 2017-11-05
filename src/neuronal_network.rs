@@ -120,7 +120,7 @@ impl NeuronalNetwork {
 	}
 
 	// initialize weights and biases to small random values
-	fn initialize_weights(&mut self) {
+	pub fn initialize_weights(&mut self) {
 		let mut initial_weights = Self::boxed_slice(0.0, self.num_weights);
 		let lo = -0.01;
 		let hi = 0.01;
@@ -374,7 +374,7 @@ impl NeuronalNetwork {
 		sum_squared_error / train_data.len() as Precision
 	}
 
-	fn accuracy(&mut self, test_data: Box<[Precision]>) -> Precision {
+	pub fn accuracy(&mut self, test_data: &[Precision]) -> Precision {
 		let test_data_stride = self.num_input + self.num_output;
 
 		// percentage correct using winner-takes all
@@ -414,5 +414,23 @@ impl NeuronalNetwork {
 		}
 
 		big_index
+	}
+
+	fn normalize(data: &mut Matrix) {
+		for col in 0..data.get_columns() {
+			let mut sum = 0.0;
+			for row in 0..data.get_rows() {
+				sum += data[row][col]
+			}
+			let mut mean = sum / data.get_rows() as f64;
+			sum = 0.0;
+			for row in 0..data.get_rows() {
+				sum += (data[row][col] - mean) * (data[row][col] - mean);
+			}
+			let mut sd = f64::sqrt(sum / (data.get_rows() - 1) as f64);
+			for row in 0..data.get_rows() {
+				data[row][col] = (data[row][col] - mean) / sd;
+			}
+		}
 	}
 }
