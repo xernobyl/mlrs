@@ -5,7 +5,7 @@ mod matrix;
 // Iris virginica = 1 0 0
 // Iris versicolor = 0 1 0
 // Iris setosa = 0 0 1
-const TEST_DATA: [f64; 150 * 7] = [
+const SAMPLE_DATA: [f64; 150 * 7] = [
 	5.1, 3.5, 1.4, 0.2, 0.0, 0.0, 1.0,
 	4.9, 3.0, 1.4, 0.2, 0.0, 0.0, 1.0,
 	4.7, 3.2, 1.3, 0.2, 0.0, 0.0, 1.0,
@@ -171,9 +171,15 @@ fn main() {
 
 	let mut nn = neuronal_network::NeuronalNetwork::new(num_input, num_hidden, num_output);
 	nn.initialize_weights();
-	nn.train(&TEST_DATA[0 .. 100 * 7], max_epochs, learn_rate, momentum, weight_decay, min_mse);
 
-	let accuracy = nn.accuracy(&TEST_DATA[100 * 7 .. 150 * 7]);
+	let mut train_data = matrix::Matrix::from(&SAMPLE_DATA[0 .. 130 * 7], 7, 130);
+	neuronal_network::NeuronalNetwork::normalize(&mut train_data);
+
+	nn.train(train_data.get_data(), max_epochs, learn_rate, momentum, weight_decay, min_mse);
+
+	let mut test_data = matrix::Matrix::from(&SAMPLE_DATA[130 * 7 .. 150 * 7], 7, 20);
+	neuronal_network::NeuronalNetwork::normalize(&mut test_data);
+	let accuracy = nn.accuracy(test_data.get_data());
 
 	println!("Accuracy is {}", accuracy);
 }

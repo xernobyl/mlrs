@@ -165,10 +165,6 @@ impl NeuronalNetwork {
 	}
 
 	fn compute_outputs(&mut self, x_values: &[Precision]) -> Box<[Precision]> {
-		//if x_values.len() != self.num_input {
-		//	panic!("bad x values length!")
-		//}
-		
 		let mut h_sums = Self::boxed_slice(0.0, self.num_hidden);	// hidden nodes sums scratch array
 		let mut o_sums = Self::boxed_slice(0.0, self.num_output);	// output nodes sums
 
@@ -319,10 +315,12 @@ impl NeuronalNetwork {
 	} // update_weights
 
 	pub fn train(&mut self, train_data: &[Precision], max_epochs: usize, learn_rate: Precision, momentum: Precision, weight_decay: Precision, min_mse: Precision) {
-		let train_data_stride = self.num_input + self.num_output;
 		// train a back-prop style NN classifier using learning rate and momentum
 		// weight decay reduces the magnitude of a weight value over time unless that value
 		// is constantly increased
+
+		let train_data_stride = self.num_input + self.num_output;
+
 		let mut epoch = 0;
 		let mut x_values = Self::boxed_slice(0.0, self.num_input); // input
 		let mut t_values = Self::boxed_slice(0.0, self.num_output); // target values
@@ -333,7 +331,11 @@ impl NeuronalNetwork {
 		}
 
 		while epoch < max_epochs {
-			if self.mean_squared_error(&train_data) < min_mse {
+			println!("Epoch {}", epoch);
+			let mse = self.mean_squared_error(&train_data);
+			println!("Mean squared error {}", mse);
+
+			if mse < min_mse {
 				break;
 			}
 
@@ -341,7 +343,6 @@ impl NeuronalNetwork {
 			
 			for i in 0..train_data.len() / train_data_stride {
 				let idx = sequence[i];
-
 				x_values.copy_from_slice(&train_data [(idx * train_data_stride)..(idx * train_data_stride + self.num_input)]);
 				t_values.copy_from_slice(&train_data [(idx * train_data_stride + self.num_input)..(idx * train_data_stride + self.num_input + self.num_output)]);
 				self.compute_outputs(&x_values); // copy x_values in, compute outputs (store them internally)
@@ -381,8 +382,8 @@ impl NeuronalNetwork {
 		let mut num_correct = 0;
 		let mut num_wrong = 0;
 
-		let mut x_values = Self::boxed_slice(0.0, self.num_input); // inputs
-		let mut t_values = Self::boxed_slice(0.0, self.num_output); // targets
+		let mut x_values = Self::boxed_slice(0.0, self.num_input);	// inputs
+		let mut t_values = Self::boxed_slice(0.0, self.num_output);	// targets
 
 		for i in 0..test_data.len() / test_data_stride {
 			x_values.copy_from_slice(&test_data[i * test_data_stride..i * test_data_stride + self.num_input]);
@@ -401,33 +402,30 @@ impl NeuronalNetwork {
 		Precision::from(num_correct) / Precision::from(num_correct + num_wrong) // ugly 2 - check for divide by zero
 	}
 
-	fn max_index(vector: Box<[Precision]>) -> usize { // helper for accuracy()
-		// index of largest value
+	fn max_index(vector: Box<[Precision]>) -> usize {
 		let mut big_index: usize = 0;
 		let mut biggest_val = vector[0];
-
-		for i in 0..vector.len() {
+		for i in 1..vector.len() {
 			if vector[i] > biggest_val {
 				biggest_val = vector[i];
 				big_index = i;
 			}
 		}
-
 		big_index
 	}
 
-	fn normalize(data: &mut Matrix) {
+	pub fn normalize(data: &mut Matrix) {
 		for col in 0..data.get_columns() {
 			let mut sum = 0.0;
 			for row in 0..data.get_rows() {
 				sum += data[row][col]
 			}
-			let mut mean = sum / data.get_rows() as f64;
+			let mean = sum / data.get_rows() as f64;
 			sum = 0.0;
 			for row in 0..data.get_rows() {
 				sum += (data[row][col] - mean) * (data[row][col] - mean);
 			}
-			let mut sd = f64::sqrt(sum / (data.get_rows() - 1) as f64);
+			let sd = f64::sqrt(sum / (data.get_rows() - 1) as f64);
 			for row in 0..data.get_rows() {
 				data[row][col] = (data[row][col] - mean) / sd;
 			}

@@ -17,12 +17,24 @@ impl Matrix {
 		}
 	}
 
+	pub fn from(data: &[Precision], columns: usize, rows: usize) -> Self {
+		Self {
+			data: Vec::from(data),
+			columns: columns,
+			rows: rows,
+		}
+	}
+
 	pub fn get_columns(&self) -> usize {
 		self.columns
 	}
 
 	pub fn get_rows(&self) -> usize {
 		self.rows
+	}	
+
+	pub fn get_data(&self) -> &[Precision] {
+		self.data.as_slice()
 	}
 }
 
