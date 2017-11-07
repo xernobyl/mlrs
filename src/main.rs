@@ -1,11 +1,13 @@
 mod neuronal_network;
 mod matrix;
 
+use matrix::*;
+
 // sepal length, width, petal length, width
 // Iris virginica = 1 0 0
 // Iris versicolor = 0 1 0
 // Iris setosa = 0 0 1
-const SAMPLE_DATA: [f64; 150 * 7] = [
+const SAMPLE_DATA: [Precision; 150 * 7] = [
 	5.1, 3.5, 1.4, 0.2, 0.0, 0.0, 1.0,
 	4.9, 3.0, 1.4, 0.2, 0.0, 0.0, 1.0,
 	4.7, 3.2, 1.3, 0.2, 0.0, 0.0, 1.0,
@@ -161,10 +163,10 @@ const SAMPLE_DATA: [f64; 150 * 7] = [
 
 fn main() {
 	let max_epochs: usize = 2000;
-	let learn_rate: f64 = 0.05;
-  let momentum: f64 = 0.01;
-	let weight_decay: f64 = 0.0001;
-	let min_mse: f64 = 0.020;
+	let learn_rate: Precision = 0.05;
+  let momentum: Precision = 0.01;
+	let weight_decay: Precision = 0.0001;
+	let min_mse: Precision = 0.020;
 	let num_input: usize = 4;
 	let num_hidden: usize = 7;
 	let num_output: usize = 3;
@@ -172,13 +174,13 @@ fn main() {
 	let mut nn = neuronal_network::NeuronalNetwork::new(num_input, num_hidden, num_output);
 	nn.initialize_weights();
 
-	let mut train_data = matrix::Matrix::from(&SAMPLE_DATA[0 .. 130 * 7], 7, 130);
-	neuronal_network::NeuronalNetwork::normalize(&mut train_data);
+	let mut train_data = Matrix::from(&SAMPLE_DATA[0 .. 130 * 7], 7, 130);
+	//neuronal_network::NeuronalNetwork::normalize(&mut train_data);
 
 	nn.train(train_data.get_data(), max_epochs, learn_rate, momentum, weight_decay, min_mse);
 
-	let mut test_data = matrix::Matrix::from(&SAMPLE_DATA[130 * 7 .. 150 * 7], 7, 20);
-	neuronal_network::NeuronalNetwork::normalize(&mut test_data);
+	let mut test_data = Matrix::from(&SAMPLE_DATA[130 * 7 .. 130 * 7 + 20 * 7], 7, 20);
+	//neuronal_network::NeuronalNetwork::normalize(&mut test_data);
 	let accuracy = nn.accuracy(test_data.get_data());
 
 	println!("Accuracy is {}", accuracy);

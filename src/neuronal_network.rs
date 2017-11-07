@@ -342,7 +342,7 @@ impl NeuronalNetwork {
 			self.rng.shuffle(&mut sequence);	// visit each training data in random order
 			
 			for i in 0..train_data.len() / train_data_stride {
-				let idx = sequence[i];
+				let idx = sequence[i];				
 				x_values.copy_from_slice(&train_data [(idx * train_data_stride)..(idx * train_data_stride + self.num_input)]);
 				t_values.copy_from_slice(&train_data [(idx * train_data_stride + self.num_input)..(idx * train_data_stride + self.num_input + self.num_output)]);
 				self.compute_outputs(&x_values); // copy x_values in, compute outputs (store them internally)
@@ -372,7 +372,7 @@ impl NeuronalNetwork {
 			}
 		}
 
-		sum_squared_error / train_data.len() as Precision
+		sum_squared_error / (train_data.len() / train_data_stride) as Precision
 	}
 
 	pub fn accuracy(&mut self, test_data: &[Precision]) -> Precision {
@@ -420,12 +420,12 @@ impl NeuronalNetwork {
 			for row in 0..data.get_rows() {
 				sum += data[row][col]
 			}
-			let mean = sum / data.get_rows() as f64;
+			let mean = sum / data.get_rows() as Precision;
 			sum = 0.0;
 			for row in 0..data.get_rows() {
 				sum += (data[row][col] - mean) * (data[row][col] - mean);
 			}
-			let sd = f64::sqrt(sum / (data.get_rows() - 1) as f64);
+			let sd = Precision::sqrt(sum / (data.get_rows() - 1) as Precision);
 			for row in 0..data.get_rows() {
 				data[row][col] = (data[row][col] - mean) / sd;
 			}
