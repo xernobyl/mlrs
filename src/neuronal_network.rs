@@ -15,11 +15,11 @@ use std::iter::FromIterator;
 #[allow(dead_code)]
 
 pub enum ActivationFunction {
-	sigmoid,
-	tan,
-	heaviside,
-	softmax,
-	relu,	// rectified linear unit https://en.wikipedia.org/wiki/Rectifier_(neural_networks)
+	sigmoid,		// https://en.wikipedia.org/wiki/Sigmoid_function
+	tan,				// lol
+	heaviside,	// https://en.wikipedia.org/wiki/Heaviside_step_function
+	softmax,		// https://en.wikipedia.org/wiki/Softmax_function
+	relu,				// https://en.wikipedia.org/wiki/Rectifier_(neural_networks)
 }
 
 pub struct NeuronalNetwork {
