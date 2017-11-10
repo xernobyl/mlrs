@@ -36,6 +36,10 @@ impl Matrix {
 	pub fn get_data(&self) -> &[Precision] {
 		self.data.as_slice()
 	}
+
+	//pub fn iter_all(&self) -> Iterator<Precision> {
+	//	self.data.into_iter()
+	//}
 }
 
 impl Index<usize> for Matrix {

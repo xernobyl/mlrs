@@ -2,10 +2,8 @@
 Based on http://quaetrix.com/Build2014.html
 
 From the original:
-"This is an enhanced neural network. It is fully-connected
-and feed-forward. The training algorithm is back-propagation
-with momentum and weight decay. The input data is normalized
-so training is quite fast."
+enhanced neural network, fully-connected and feed-forward
+The training algorithm is back-propagation with momentum and weight decay
 */
 
 extern crate rand;
@@ -15,6 +13,14 @@ use std::iter::FromIterator;
 
 #[allow(unused_mut)]
 #[allow(dead_code)]
+
+pub enum ActivationFunction {
+	sigmoid,
+	tan,
+	heaviside,
+	softmax,
+	relu,	// rectified linear unit https://en.wikipedia.org/wiki/Rectifier_(neural_networks)
+}
 
 pub struct NeuronalNetwork {
 	rng: Box<rand::Rng>,
@@ -88,12 +94,8 @@ impl NeuronalNetwork {
 
 	// copy weights and biases in weights[] array to i-h weights, i-h biases, h-o weights, h-o biases
 	fn set_weights(&mut self, weights: Box<[Precision]>) {
-		if weights.len() != self.num_weights {
-			panic!("Bad weights array length (got {}, expected {}).", weights.len(), self.num_weights);
-		}
-
 		let mut k = 0;	// points into weights param
-		
+
 		for i in 0..self.ih_weights.get_rows() {
 			for j in 0..self.ih_weights.get_columns() {
 				self.ih_weights[i][j] = weights[k];
@@ -118,6 +120,28 @@ impl NeuronalNetwork {
 			k += 1;
 		}
 	}
+
+	/*pub fn print_weights(&self) {
+		println!("Weights:");
+		
+		for w in self.ih_weights.iter_all() {
+			print!("{}, ", w);
+		}
+
+		for w in self.h_biases.iter_all() {
+			print!("{}, ", w);
+		}
+
+		for w in self.ho_weights.iter_all() {
+			print!("{}, ", w);
+		}
+
+		for w in self.o_biases.iter_all() {
+			print!("{}, ", w);
+		}
+
+		println!();
+	}*/
 
 	// initialize weights and biases to small random values
 	pub fn initialize_weights(&mut self) {
@@ -196,7 +220,7 @@ impl NeuronalNetwork {
 			o_sums[i] += self.o_biases[i];
 		}
 
-		let soft_out = Self::soft_max(o_sums);	// softmax activation does all outputs at once for efficiency
+		let soft_out = Self::softmax(o_sums);	// softmax activation does all outputs at once for efficiency
 		self.outputs.copy_from_slice(&soft_out);	// could define a GetOutputs method instead
 		self.outputs.clone()
 	}
@@ -214,7 +238,7 @@ impl NeuronalNetwork {
 		}
 	}
 
-	fn soft_max(o_sums: Box<[Precision]>) -> Box<[Precision]> {
+	fn softmax(o_sums: Box<[Precision]>) -> Box<[Precision]> {
 		// determine max output sum
 		// does all output nodes at once so scale doesn't have to be re-computed each time
 		let mut max = o_sums[0];
@@ -240,6 +264,20 @@ impl NeuronalNetwork {
 		result // now scaled so that xi sum to 1.0
 	}
 
+	fn d_softmax(x: Precision) -> Precision {
+		// derivative of softmax = (1 - y) * y (same as log-sigmoid)
+			(1.0 - x) * x
+	}
+
+	fn relu(x: Precision) -> Precision {
+		if x > 0.0 { x } else { 0.0 }
+	}
+
+	fn d_relu(x: Precision) -> Precision {
+		// the 0.5 here is retarded... BUT SO IT IS RETURNING 1 or 0!
+		if x > 0.0 { 1.0 } else if x == 0.0 { 0.5 } else { 0.0 }
+	}
+
 	fn update_weights(&mut self, t_values: &Box<[Precision]>, learn_rate: Precision, momentum: Precision, weight_decay: Precision) {
 		// update the weights and biases using back-propagation, with target values, eta (learning rate),
 		// alpha (momentum).
@@ -251,8 +289,7 @@ impl NeuronalNetwork {
 
 		// 1. compute output gradients
 		for i in 0..self.o_grads.len() {
-			// derivative of softmax = (1 - y) * y (same as log-sigmoid)
-			let derivative = (1.0 - self.outputs[i]) * self.outputs[i];
+			let derivative = Self::d_softmax(self.outputs[i]);
 			// 'mean squared error version' includes (1-y)(y) derivative
 			self.o_grads[i] = derivative * (t_values[i] - self.outputs[i]);
 		}
@@ -373,6 +410,10 @@ impl NeuronalNetwork {
 		}
 
 		sum_squared_error / (train_data.len() / train_data_stride) as Precision
+	}
+
+	fn mean_squared_error_test0() {
+		let mut nn = NeuronalNetwork::new(4, 7, 3);
 	}
 
 	pub fn accuracy(&mut self, test_data: &[Precision]) -> Precision {
