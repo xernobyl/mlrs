@@ -171,7 +171,7 @@ fn main() {
 	let num_hidden: usize = 7;
 	let num_output: usize = 3;
 
-	let mut nn = neuronal_network::NeuronalNetwork::new(num_input, num_hidden, num_output);
+	let mut nn = neuronal_network::NeuronalNetwork::new(neuronal_network::ActivationFunction::Relu, num_input, num_hidden, num_output);
 	nn.initialize_weights();
 
 	let mut train_data = Matrix::from(&SAMPLE_DATA[0 .. 130 * 7], 7, 130);

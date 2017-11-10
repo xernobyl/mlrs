@@ -6,6 +6,10 @@ enhanced neural network, fully-connected and feed-forward
 The training algorithm is back-propagation with momentum and weight decay
 */
 
+/*
+TODO: add multiple layers
+*/
+
 extern crate rand;
 use self::rand::Rng;
 use matrix::*;
@@ -15,16 +19,17 @@ use std::iter::FromIterator;
 #[allow(dead_code)]
 
 pub enum ActivationFunction {
-	sigmoid,		// https://en.wikipedia.org/wiki/Sigmoid_function
-	tan,				// lol
-	heaviside,	// https://en.wikipedia.org/wiki/Heaviside_step_function
-	softmax,		// https://en.wikipedia.org/wiki/Softmax_function
-	relu,				// https://en.wikipedia.org/wiki/Rectifier_(neural_networks)
+	Sigmoid,		// https://en.wikipedia.org/wiki/Sigmoid_function
+	Tan,				// lol
+	Heaviside,	// https://en.wikipedia.org/wiki/Heaviside_step_function
+	Softmax,		// https://en.wikipedia.org/wiki/Softmax_function
+	Relu,				// https://en.wikipedia.org/wiki/Rectifier_(neural_networks)
 }
 
 pub struct NeuronalNetwork {
 	rng: Box<rand::Rng>,
 
+	activation_function: ActivationFunction,
 	num_input: usize,
 	num_hidden: usize,
 	num_output: usize,
@@ -60,12 +65,13 @@ impl NeuronalNetwork {
 		vec![init; size].into_boxed_slice()
 	}
 
-	pub fn new(num_input: usize, num_hidden: usize, num_output: usize) -> Self {
+	pub fn new(activation_function: ActivationFunction, num_input: usize, num_hidden: usize, num_output: usize) -> Self {
 		Self {
 			num_weights: (num_input * num_hidden) + (num_hidden * num_output) + num_hidden + num_output,
-			
+
 			rng: Box::new(rand::weak_rng()),
 
+			activation_function: activation_function,
 			num_input: num_input,
 			num_hidden: num_hidden,
 			num_output: num_output,
@@ -123,7 +129,7 @@ impl NeuronalNetwork {
 
 	/*pub fn print_weights(&self) {
 		println!("Weights:");
-		
+
 		for w in self.ih_weights.iter_all() {
 			print!("{}, ", w);
 		}
@@ -220,8 +226,15 @@ impl NeuronalNetwork {
 			o_sums[i] += self.o_biases[i];
 		}
 
-		let soft_out = Self::softmax(o_sums);	// softmax activation does all outputs at once for efficiency
-		self.outputs.copy_from_slice(&soft_out);	// could define a GetOutputs method instead
+		// activation function does all outputs at once for efficiency
+		let activation_out = match self.activation_function {
+			ActivationFunction::Softmax => Self::softmax(o_sums),
+			ActivationFunction::Relu => Self::relu(o_sums),
+			_ => panic!("Function not implemented.")
+		};
+
+
+		self.outputs.copy_from_slice(&activation_out);	// could define a GetOutputs method instead
 		self.outputs.clone()
 	}
 
@@ -269,8 +282,15 @@ impl NeuronalNetwork {
 			(1.0 - x) * x
 	}
 
-	fn relu(x: Precision) -> Precision {
-		if x > 0.0 { x } else { 0.0 }
+	fn relu(o_sums: Box<[Precision]>) -> Box<[Precision]> {
+		//if x > 0.0 { x } else { 0.0 }
+
+		let mut result = Self::boxed_slice(0.0, o_sums.len());
+		for i in 0..o_sums.len() {
+			result[i] = if o_sums[i] > 0.0 { o_sums[i] } else { 0.0 }
+		}
+
+		result
 	}
 
 	fn d_relu(x: Precision) -> Precision {
@@ -289,7 +309,11 @@ impl NeuronalNetwork {
 
 		// 1. compute output gradients
 		for i in 0..self.o_grads.len() {
-			let derivative = Self::d_softmax(self.outputs[i]);
+			let derivative = match self.activation_function {
+					ActivationFunction::Softmax => Self::d_softmax(self.outputs[i]),
+					ActivationFunction::Relu => Self::d_relu(self.outputs[i]),
+					_ => panic!("Function not implemented.")
+			};
 			// 'mean squared error version' includes (1-y)(y) derivative
 			self.o_grads[i] = derivative * (t_values[i] - self.outputs[i]);
 		}
@@ -377,9 +401,9 @@ impl NeuronalNetwork {
 			}
 
 			self.rng.shuffle(&mut sequence);	// visit each training data in random order
-			
+
 			for i in 0..train_data.len() / train_data_stride {
-				let idx = sequence[i];				
+				let idx = sequence[i];
 				x_values.copy_from_slice(&train_data [(idx * train_data_stride)..(idx * train_data_stride + self.num_input)]);
 				t_values.copy_from_slice(&train_data [(idx * train_data_stride + self.num_input)..(idx * train_data_stride + self.num_input + self.num_output)]);
 				self.compute_outputs(&x_values); // copy x_values in, compute outputs (store them internally)
@@ -413,7 +437,7 @@ impl NeuronalNetwork {
 	}
 
 	fn mean_squared_error_test0() {
-		let mut nn = NeuronalNetwork::new(4, 7, 3);
+		let mut nn = NeuronalNetwork::new(ActivationFunction::Softmax, 4, 7, 3);
 	}
 
 	pub fn accuracy(&mut self, test_data: &[Precision]) -> Precision {
